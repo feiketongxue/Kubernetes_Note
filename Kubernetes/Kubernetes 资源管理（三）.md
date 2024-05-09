@@ -12,7 +12,7 @@
 >
 > ​	当然，如果`Pod`中程序的数据需要持久化，`kubernetes`还提供了 各种`存储`系统。
 
-<img src="/Users/fico/Library/Application%20Support/typora-user-images/image-20240228112944374.png" alt="image-20240228112944374" style="zoom:80%;" />
+<img src="../Images/image-20240228112944374.png" alt="image-20240228112944374" style="zoom:80%;" />
 
 ## `YAML`语言介绍
 
@@ -763,7 +763,7 @@ Error from server (AlreadyExists): error when creating "nginxpod.yaml": pods "ng
 
 通过`kubernetes`的授权机制，将不同的`namespace`交给不同的租户进行管理，这样就实现了多租户的资源隔离。此时还能结合`kubernetes`的资源配额机制，限定不同租户能占用的资源，例如 CPU 使用量，内存使用量等等，来实现租户可用资源的管理。
 
-<img src="../../Library/Application%20Support/typora-user-images/image-20240229100651208.png" alt="image-20240229100651208" style="zoom:80%;" />
+<img src="../Images/image-20240229100651208.png" alt="image-20240229100651208" style="zoom:80%;" />
 
 > `kubernetes`在集群启动之后，会默认创建几个`namespace`
 >
@@ -867,7 +867,7 @@ namespace "dev" deleted
 
 `Pod`可以认为是容器的封装，一个`Pod`中可以存在一个 或 多个容器。
 
-<img src="../../Library/Application%20Support/typora-user-images/image-20240229102116959.png" alt="image-20240229102116959" style="zoom:80%;" />
+<img src="../Images/image-20240229102116959.png" alt="image-20240229102116959" style="zoom:80%;" />
 
 > `kubernetes`在集群启动之后，集群中的各个组件也都是以Pod方式运行的。可以通过下面命令查看：
 >
@@ -1065,7 +1065,7 @@ namespace "dev" deleted
 > >
 > >**PS**：**为什么 No resources found in dev namespace ？？？？**
 
-<img src="../../Library/Application%20Support/typora-user-images/image-20240229105150133.png" alt="image-20240229105150133" style="zoom:50%;" />
+<img src="../Images/image-20240229105150133.png" alt="image-20240229105150133" style="zoom:50%;" />
 
 > > 创建 `pod`的同时 ，不会同时创建 `deploy` ，但是创建 `deploy` 一定会创建 `Pod` ，比如命令行创建
 
@@ -1286,7 +1286,7 @@ namespace "dev" deleted
 
 在`kubernetes`中`Pod`控制器的种类有很多，本章节介绍一种：`Deployment`
 
-<img src="../../Library/Application%20Support/typora-user-images/image-20240229143235933.png" alt="image-20240229143235933" style="zoom:80%;" />
+<img src="../Images/image-20240229143235933.png" alt="image-20240229143235933" style="zoom:80%;" />
 
  ### 命令方式
 
@@ -1490,7 +1490,7 @@ No resources found in dev namespace.
 
 `Service`可以看作是一组同类`Pod`**对外的访问接口**。借助`Service`，应用可以方便地实现服务发现和负载均衡。
 
-<img src="../../Library/Application%20Support/typora-user-images/image-20240229152212680.png" alt="image-20240229152212680" style="zoom:80%;" />
+<img src="../Images/image-20240229152212680.png" alt="image-20240229152212680" style="zoom:80%;" />
 
 ### 命令方式
 

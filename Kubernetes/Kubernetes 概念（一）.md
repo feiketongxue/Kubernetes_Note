@@ -47,4 +47,4 @@
 - Label：标签，用于对 pod 进行分类，同一类 pod 会拥有相同的标签，比如下图中的 app:tomcat 、app:tom标签
 - NameSpace：命名空间，用来隔离pod的运行环境 ，比如 dev、prod，test 环境
 
-![image-20240223104622087](/Users/fico/Library/Application%20Support/typora-user-images/image-20240223104622087.png)
+![image-20240223104622087](../Images/image-20240223104622087.png)

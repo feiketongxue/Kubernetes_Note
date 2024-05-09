@@ -10,7 +10,7 @@
 
 - `Pod`终止过程
 
-<img src="../../Library/Application%20Support/typora-user-images/image-20240306142932633.png" alt="image-20240306142932633" style="zoom:80%;" />
+<img src="../Images/image-20240306142932633.png" alt="image-20240306142932633" style="zoom:80%;" />
 
 在整个生命周期中，Pod会出现5种**状态**（**相位**），分别如下：
 
@@ -24,7 +24,7 @@
 
 #### `Pod` 创建过程
 
-<img src="../../Library/Application%20Support/typora-user-images/image-20240306152554541.png" alt="image-20240306152554541" style="zoom:80%;" />
+<img src="../Images/image-20240306152554541.png" alt="image-20240306152554541" style="zoom:80%;" />
 
 1. 客户端通过`kubectl`或用户提交需要创建的`Pod`信息到`apiServer`
 2. `apiServer`开始生成`Pod`对象的信息，并将信息存入`etcd`，返回确认信息至客户端

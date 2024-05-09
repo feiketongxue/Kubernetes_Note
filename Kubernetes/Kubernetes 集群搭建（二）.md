@@ -11,7 +11,7 @@
 - 一主多从：一台`master`节点和多台`node`节点，搭建简单，有单机故障风险，用户测试环境；
 - 多主多从：多台`master`节点和多台`node`节点，搭建麻烦，安全性高，多余于生产环境；
 
-![image-20240223162120610](../../Library/Application%20Support/typora-user-images/image-20240223162120610.png)
+![image-20240223162120610](../Images/image-20240223162120610.png)
 
 > 本次测试使用 一主多从 类型的集群
 
@@ -162,7 +162,7 @@ rtt min/avg/max/mdev = 0.023/0.053/0.083/0.030 ms
 [root@localhost ~]# vim /etc/selinux/config
 ```
 
-![image-20240223181954934](../../Library/Application%20Support/typora-user-images/image-20240223181954934.png)
+![image-20240223181954934](../Images/image-20240223181954934.png)
 
 - 禁用 `swap` 分区（`swap` 分区指的的 虚拟内存分区，在物理内存使用完之后，将磁盘空间，虚拟成内存使用，启用`swap` 设备会对系统的性能产生非常负面的影响，因为`kubernetes`要求每个节点都要禁用 `swap` 设备，如果因为某些原因确实不能关闭`swap` 分区，就需要在集群安装过程中通过明确的参数进行配置说明）
 
@@ -172,7 +172,7 @@ rtt min/avg/max/mdev = 0.023/0.053/0.083/0.030 ms
 [root@localhost ~]# vim /etc/fstab
 ```
 
-<img src="../../Library/Application%20Support/typora-user-images/image-20240223182122465.png" alt="image-20240223182122465" style="zoom:50%;" />
+<img src="../Images/image-20240223182122465.png" alt="image-20240223182122465" style="zoom:50%;" />
 
 - 修改`linux`的内核参数
 
@@ -1302,8 +1302,8 @@ nginx        NodePort    10.109.11.2   <none>        80:30211/TCP   6m55s
 
 > 测试结果（master:30211 或者 node1:30211 不行 是因为 DNS的原因 不用管）：
 
-<img src="../../Library/Application%20Support/typora-user-images/image-20240227151310950.png" alt="image-2024027151310950" style="zoom:50%;" />
+<img src="../Images/image-20240227151310950.png" alt="image-2024027151310950" style="zoom:50%;" />
 
-<img src="../../Library/Application%20Support/typora-user-images/image-20240227151510121.png" style="zoom:50%;" />
+<img src="../Images/image-20240227151510121.png" style="zoom:50%;" />
 
-<img src="../../Library/Application%20Support/typora-user-images/image-20240227151526918.png" alt="image-20240227151526918" style="zoom:50%;" />
+<img src="../Images/image-20240227151526918.png" alt="image-20240227151526918" style="zoom:50%;" />

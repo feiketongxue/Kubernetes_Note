@@ -4,7 +4,7 @@
 
 ### `Pod` 结构
 
-<img src="../../Library/Application%20Support/typora-user-images/image-20240305112414222.png" alt="image-20240305112414222" style="zoom:80%;" />
+<img src="../Images/image-20240305112414222.png" alt="image-20240305112414222" style="zoom:80%;" />
 
 >  每个`Pod` 中都可以包含一个或者多个容器，这些容器可以分为两类：
 >
