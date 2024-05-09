@@ -24,9 +24,9 @@
 
 > Docker: 负责节点上容器的各种操作
 
+![1715244234733](../Images/image-20240223100857698.png)
 
-
-![1715241329862](images/Kubernetes概念（一）/1715241329862.png)下面，以部署一个nginx 服务来说明kubernetes系统各个组件调用关系：
+下面，以部署一个nginx 服务来说明kubernetes系统各个组件调用关系：
 
 1. 首先要明确，一旦kubernetes 环境启动之后，master和node都会将自身的信息存储到etcd 数据库中，也就是持久化处理；
 2. 一个nginx 服务的安装请求会先被发送到master 节点的 apiServer 组件；
