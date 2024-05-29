@@ -1612,6 +1612,7 @@ curl: (7) Failed connect to 10.244.1.15:80; 没有到主机的路由
 > svc-nginx1   ClusterIP   10.104.58.211   <none>        80/TCP    28s
 > 
 > # 查看service，这里可以简写为 svc
+> # 或者 kubectl get pods,deploy,svc -n dev -o wide
 > [root@master Download]# kubectl get svc -n dev
 > NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
 > svc-nginx1   ClusterIP   10.104.58.211   <none>        80/TCP    44s
