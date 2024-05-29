@@ -610,6 +610,8 @@ kube-system       Active   24h
 
 声明式对象配置跟命令是对象配置类似，但是只有一个命令 `apply`
 
+用于更新和新增操作，同一个文件再次操作相当于**更新操作**
+
 ```shell
 # 执行yaml文件，创建资源
 [root@master Download]# kubectl apply -f nginxpod.yaml
@@ -790,14 +792,19 @@ kube-system       Active   42h
 # 查看 系统pod
 [root@master Download]# kubectl get pods -n kube-system
 NAME                             READY   STATUS    RESTARTS   AGE
+# DNS 域名
 coredns-9d85f5447-dlvzc          1/1     Running   0          42h
 coredns-9d85f5447-mf72b          1/1     Running   0          42h
+# 存放持久化信息
 etcd-master                      1/1     Running   0          42h
+# 访问入口
 kube-apiserver-master            1/1     Running   0          42h
+# 具体执行请求调度
 kube-controller-manager-master   1/1     Running   0          42h
 kube-proxy-j2p4h                 1/1     Running   0          42h
 kube-proxy-kkwzq                 1/1     Running   0          42h
 kube-proxy-lr55p                 1/1     Running   0          42h
+# 请求调度
 kube-scheduler-master            1/1     Running   0          42h
 
 # 查看指定的ns   命令：kubectl get ns ns名称
