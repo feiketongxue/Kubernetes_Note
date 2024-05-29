@@ -183,8 +183,9 @@ Events:
 
 ### 镜像拉取
 
- 创建 pod-imagepullpollicy.yaml 文件
+
 ```java
+#  创建 pod-imagepullpollicy.yaml 文件
 apiVersion: v1
 kind: Pod
 metadata:
