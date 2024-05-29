@@ -183,7 +183,7 @@ Events:
 
 ### 镜像拉取
 
-```shell
+```sh
 # 创建 pod-imagepullpollicy.yaml 文件
 apiVersion: v1
 kind: Pod
