@@ -1178,14 +1178,297 @@ daemonset.apps "pc-daemonset" deleted
 > - 当Job创建的pod执行成功结束时，Job将记录成功结束的pod数量
 > - 当成功结束的pod达到指定的数量时，Job将完成执行
 
-
-
-
-
 ![20200618213054113](../Images/image-20200618213054113.png)
 ```sh
+# Job 资源清单文件
+apiVersion: batch/v1   # 版本号
+kind: Job              # 类型       
+metadata:              # 元数据
+  name:                # rs名称 
+  namespace:           # 所属命名空间 
+  labels:              #标签
+    controller: job
+spec:                       # 详情描述
+  completions: 1            # 指定job需要成功运行Pods的次数。默认值: 1
+  parallelism: 1            # 指定job在任一时刻应该并发运行Pods的数量。默认值: 1
+  activeDeadlineSeconds: 30 # 指定job可运行的时间期限，超过时间还未结束，系统将会尝试进行终止。
+  backoffLimit: 6           # 指定job失败后进行重试的次数。默认是6
+  manualSelector: true      # 是否可以使用selector选择器选择pod，默认是false
+  selector:                 # 选择器，通过它指定该控制器管理哪些pod
+    matchLabels:            # Labels匹配规则
+      app: counter-pod
+    matchExpressions:       # Expressions匹配规则
+      - {key: app, operator: In, values: [counter-pod]}
+  template:                 # 模板，当副本数量不足时，会根据下面的模板创建pod副本
+    metadata:
+      labels:
+        app: counter-pod
+    spec:
+      restartPolicy: Never  # 重启策略只能设置为Never或者OnFailure
+      containers:
+      - name: counter
+        image: busybox:1.30
+        command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 2;done"]
+```
+>关于重启策略设置的说明：
+>   -  如果指定为OnFailure，则job会在pod出现故障时重启容器，而不是创建pod，failed次数不变
+>   -  如果指定为Never，则job会在pod出现故障时创建新的pod，并且故障pod不会消失，也不会重启，failed次数加1
+>   - 如果指定为Always的话，就意味着一直重启，意味着job任务会重复去执行了，当然不对，所以不能设置为Always
+
+
+```sh
+# 创建 pc-job.yaml 文件
+apiVersion: batch/v1
+kind: Job      
+metadata:
+  name: pc-job
+  namespace: dev
+spec:
+  manualSelector: true
+  selector:
+    matchLabels:
+      app: counter-pod
+  template:
+    metadata:
+      labels:
+        app: counter-pod
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: counter
+        image: busybox:1.30
+        command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 3;done"]
+
+# 创建 job
+[root@master ~]# vim pc-job.yaml
+[root@master ~]# kubectl create -f pc-job.yaml
+job.batch/pc-job created
+
+# 查看 job
+[root@master ~]# kubectl get job -n dev -o wide  -w
+NAME     COMPLETIONS   DURATION   AGE   CONTAINERS   IMAGES         SELECTOR
+pc-job   0/1           7s         7s    counter      busybox:1.30   app=counter-pod
+pc-job   1/1           28s        28s   counter      busybox:1.30   app=counter-pod
+
+# 通过观察 pod 状态可以看到，pod在运行完毕任务后，就会变成 Completed 状态
+[root@master ~]# kubectl get pods -n dev -w
+NAME           READY   STATUS    RESTARTS   AGE
+pc-job-4xj4c   1/1     Running   0          12s
+pc-job-4xj4c   0/1     Completed   0          28s
+
+# 调整下pod运行的总数量和并行数量 即：在spec下设置下面两个选项
+# completions: 6 # 指定job需要成功运行Pods的次数为6
+# parallelism: 3 # 指定job并发运行Pods的数量为3
+# 然后重新运行job，观察效果，此时会发现，job会每次运行3个pod，总共执行了6个pod
+[root@master ~]# kubectl delete -f pc-job.yaml 
+job.batch "pc-job" deleted
+[root@master ~]# vim pc-job.yaml
+[root@master ~]# more pc-job.yaml 
+apiVersion: batch/v1
+kind: Job      
+metadata:
+  name: pc-job
+  namespace: dev
+spec:
+  manualSelector: true
+  # 添加参数
+  completions: 6 # 指定job需要成功运行Pods的次数为6
+  parallelism: 3 # 指定job并发运行Pods的数量为3
+  selector:
+    matchLabels:
+      app: counter-pod
+  template:
+    metadata:
+      labels:
+        app: counter-pod
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: counter
+        image: busybox:1.30
+        command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 3;done"]
+[root@master ~]# kubectl create -f pc-job.yaml
+job.batch/pc-job created
+[root@master ~]# kubectl get pods -n dev -w
+NAME           READY   STATUS    RESTARTS   AGE
+pc-job-qjbsd   0/1     Pending   0          0s
+pc-job-xd9mh   0/1     Pending   0          0s
+pc-job-qjbsd   0/1     Pending   0          0s
+pc-job-2n664   0/1     Pending   0          0s
+pc-job-xd9mh   0/1     Pending   0          0s
+pc-job-2n664   0/1     Pending   0          0s
+pc-job-xd9mh   0/1     ContainerCreating   0          0s
+pc-job-qjbsd   0/1     ContainerCreating   0          0s
+pc-job-2n664   0/1     ContainerCreating   0          0s
+pc-job-xd9mh   1/1     Running             0          1s
+pc-job-2n664   1/1     Running             0          3s
+pc-job-qjbsd   1/1     Running             0          3s
+pc-job-xd9mh   0/1     Completed           0          28s
+pc-job-zw285   0/1     Pending             0          0s
+pc-job-zw285   0/1     Pending             0          0s
+pc-job-zw285   0/1     ContainerCreating   0          0s
+pc-job-zw285   1/1     Running             0          1s
+pc-job-qjbsd   0/1     Completed           0          30s
+pc-job-btrfp   0/1     Pending             0          0s
+pc-job-btrfp   0/1     Pending             0          0s
+pc-job-2n664   0/1     Completed           0          30s
+pc-job-mqkdv   0/1     Pending             0          0s
+pc-job-btrfp   0/1     ContainerCreating   0          0s
+pc-job-mqkdv   0/1     Pending             0          0s
+pc-job-mqkdv   0/1     ContainerCreating   0          0s
+pc-job-btrfp   1/1     Running             0          2s
+pc-job-mqkdv   1/1     Running             0          2s
+...... 执行完成
+
+# 删除 job
+[root@master ~]# kubectl delete -f pc-job.yaml 
+job.batch "pc-job" deleted
 ```
 ## CronJob(CJ)
 
+ **CronJob** 控制器以 Job控制器资源为其管控对象，并借助它管理pod资源对象，Job控制器定义的作业任务在其控制器资源创建之后便会立即执行，但**CronJob** 可以以类似于Linux操作系统的周期性任务作业计划的方式控制其运行时间点及重复运行的方式。也就是说，**CronJob** 可以在特定的时间点(反复的)去运行job任务。
+
+![20200618213149531](../Images/image-20200618213149531.png)
+
 ```sh
+
+# CronJob 资源清单文件
+apiVersion: batch/v1beta1     # 版本号
+kind: CronJob                 # 类型       
+metadata:                     # 元数据
+  name:                       # rs名称 
+  namespace:                  # 所属命名空间 
+  labels:                     # 标签
+    controller: cronjob
+spec:                           # 详情描述
+  schedule:                     # cron格式的作业调度运行时间点,用于控制任务在什么时间执行
+  concurrencyPolicy:            # 并发执行策略，用于定义前一次作业运行尚未完成时是否以及如何运行后一次的作业
+  failedJobHistoryLimit:        # 为失败的任务执行保留的历史记录数，默认为1
+  successfulJobHistoryLimit:    # 为成功的任务执行保留的历史记录数，默认为3
+  startingDeadlineSeconds:      # 启动作业错误的超时时长
+  jobTemplate:                  # job控制器模板，用于为cronjob控制器生成job对象;下面其实就是job的定义
+    metadata:
+    spec:
+      completions: 1
+      parallelism: 1
+      activeDeadlineSeconds: 30
+      backoffLimit: 6
+      manualSelector: true
+      selector:
+        matchLabels:
+          app: counter-pod
+        matchExpressions: 规则
+          - {key: app, operator: In, values: [counter-pod]}
+      template:
+        metadata:
+          labels:
+            app: counter-pod
+        spec:
+          restartPolicy: Never 
+          containers:
+          - name: counter
+            image: busybox:1.30
+            command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 20;done"]
+```
+
+```sh
+# 重点解释的几个选项：
+schedule: cron表达式，用于指定任务的执行时间
+    */1    *      *    *     *
+    <分钟> <小时> <日> <月份> <星期>
+
+    分钟 值从 0 到 59.
+    小时 值从 0 到 23.
+    日 值从 1 到 31.
+    月 值从 1 到 12.
+    星期 值从 0 到 6, 0 代表星期日
+    多个时间可以用逗号隔开； 范围可以用连字符给出；*可以作为通配符； /表示每...
+concurrencyPolicy:
+    Allow:   允许Jobs并发运行(默认)
+    Forbid:  禁止并发运行，如果上一次运行尚未完成，则跳过下一次运行
+    Replace: 替换，取消当前正在运行的作业并用新作业替换它
+```
+
+```sh
+# 创建 pc-cronjob.yaml
+
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: pc-cronjob
+  namespace: dev
+  labels:
+    controller: cronjob
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    metadata:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: counter
+            image: busybox:1.30
+            command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 3;done"]
+
+# 创建cronjob
+[root@master ~]# vim pc-cronjob.yaml 
+[root@master ~]# kubectl create -f pc-cronjob.yaml
+cronjob.batch/pc-cronjob created
+
+# 观察 job 情况
+[root@master ~]# kubectl get job -n dev -w
+NAME                    COMPLETIONS   DURATION   AGE
+pc-cronjob-1717083900   0/1                      0s
+pc-cronjob-1717083900   0/1           0s         0s
+pc-cronjob-1717083900   1/1           29s        29s
+pc-cronjob-1717083960   0/1                      0s
+pc-cronjob-1717083960   0/1           0s         0s
+pc-cronjob-1717083960   1/1           29s        29s
+pc-cronjob-1717084020   0/1                      0s
+pc-cronjob-1717084020   0/1           0s         0s
+
+# 观察 pod 情况
+[root@master ~]# kubectl get pod -n dev -w
+NAME                          READY   STATUS    RESTARTS   AGE
+pc-cronjob-1717083900-89p9f   1/1     Running   0          8s
+pc-cronjob-1717083900-89p9f   0/1     Completed   0          29s
+pc-cronjob-1717083960-xwxwp   0/1     Pending     0          0s
+pc-cronjob-1717083960-xwxwp   0/1     Pending     0          0s
+pc-cronjob-1717083960-xwxwp   0/1     ContainerCreating   0          0s
+pc-cronjob-1717083960-xwxwp   1/1     Running             0          2s
+pc-cronjob-1717083960-xwxwp   0/1     Completed           0          29s
+pc-cronjob-1717084020-qg88f   0/1     Pending             0          0s
+pc-cronjob-1717084020-qg88f   0/1     Pending             0          0s
+pc-cronjob-1717084020-qg88f   0/1     ContainerCreating   0          0s
+
+# 观察 cj 情况
+[root@master ~]# kubectl get cj -n dev -w
+NAME         SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+pc-cronjob   */1 * * * *   False     0        <none>          5s
+pc-cronjob   */1 * * * *   False     1        0s              34s
+pc-cronjob   */1 * * * *   False     0        30s             64s
+pc-cronjob   */1 * * * *   False     1        0s              94s
+pc-cronjob   */1 * * * *   False     0        30s             2m4s
+pc-cronjob   */1 * * * *   False     1        0s              2m34s
+
+
+[root@master ~]# kubectl get cronjobs -n dev
+NAME         SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+pc-cronjob   */1 * * * *   False     0        43s             4m17s
+[root@master ~]# kubectl get jobs -n dev
+NAME                    COMPLETIONS   DURATION   AGE
+pc-cronjob-1717083960   1/1           29s        2m47s
+pc-cronjob-1717084020   1/1           29s        107s
+pc-cronjob-1717084080   1/1           29s        47s
+[root@master ~]# kubectl get pods -n dev
+NAME                          READY   STATUS      RESTARTS   AGE
+pc-cronjob-1717083960-xwxwp   0/1     Completed   0          2m51s
+pc-cronjob-1717084020-qg88f   0/1     Completed   0          111s
+pc-cronjob-1717084080-r9dz8   0/1     Completed   0          51s
+
+# 删除 cronjob
+[root@master ~]# kubectl  delete -f pc-cronjob.yaml
+cronjob.batch "pc-cronjob" deleted
 ```
