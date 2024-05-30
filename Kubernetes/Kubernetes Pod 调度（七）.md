@@ -70,6 +70,18 @@ node/node2 labeled
 
 # 创建 pod-nodeselector.yaml 文件
 [root@master Download]# vim pod-nodeselector.yaml
+# 创建 pod-nodeselector.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-nodeselector
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.17.1
+  nodeSelector:
+    nodeenv: pro # 指定调度到具有nodeenv=pro标签的节点上
 
 # 创建 Pod
 [root@master Download]# kubectl create -f pod-nodeselector.yaml 
