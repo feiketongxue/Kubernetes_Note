@@ -880,7 +880,7 @@ kubectl taint nodes node1 key-
 >    key       					 # 对应着要容忍的污点的键，空意味着匹配所有的键
 >    value     					 # 对应着要容忍的污点的值
 >    operator  					 # key-value的运算符，支持Equal和Exists（默认）
->    effect    					 # 对应污点的effect，空意味着匹配所有影响
+>    effect    					 # 对应污点的effect，空意味着匹配所有影
 >    tolerationSeconds   # 容忍时间, 当effect为NoExecute时生效，表示pod在Node上的停留时间
 > ```
 
@@ -889,7 +889,7 @@ kubectl taint nodes node1 key-
 1. 上面通过污点已经在`node1`节点上打上了`NoExecute`的污点，此时`pod`是调度不上去的
 2. 可以通过给 `pod`添加容忍，然后将其调度`node1`上去
 
-```sh
+```shell
 # 创建  pod-toleration.yaml 文件
 apiVersion: v1
 kind: Pod
@@ -900,11 +900,12 @@ spec:
   containers:
   - name: nginx
     image: nginx:1.17.1
-  tolerations:      			# 添加容忍
+  tolerations:      	    # 添加容忍
   - key: "tag"        		# 要容忍的污点的key
     operator: "Equal" 		# 操作符
     value: "heima"    		# 容忍的污点的value
-    effect: "NoExecute"   # 添加容忍的规则，这里必须和标记的污点规则相同
+    effect: "NoExecute"     # 添加容忍的规则，这里必须和标记的污点规则相同
+
 ```
 
 ```shell
@@ -966,8 +967,3 @@ NAME             READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINA
 pod-toleration   1/1     Running   0          41s   10.244.1.19   node1   <none>           <none>
 
 ```
-
-
-
-
-
