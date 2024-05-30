@@ -896,20 +896,290 @@ deployment.apps "pc-deployment" deleted
 
 ## Horizontal Pod Autoscaler(HPA)
 
-现在已经实现通过手工执行**kubectl scale**命令实现**Pod**扩容或缩容，但是这显然不符合**Kubernetes**的定位目标--自动化、智能化。 **Kubernetes**期望可以实现通过监测**Pod**的使用情况，实现**pod**数量的自动调整，于是就产生了 **Horizontal Pod Autoscaler** 这种控制器。
+现在已经实现通过手工执行**kubectl scale**命令实现**Pod**扩容或缩容，但是这显然不符合**Kubernetes**的定位目标--自动化、智能化。 **Kubernetes** 期望可以实现通过监测 **Pod** 的使用情况，实现 **pod** 数量的自动调整，于是就产生了 **Horizontal Pod Autoscaler** 这种控制器。
 ![20200608155858271](../Images/image-20200608155858271.png)
 
 
 ### 安装metrics-server
 
+**metrics-server** 可以用来收集集群中的资源使用情况
+```sh
+[root@master ~]# yum install git -y
+[root@master ~]# git clone -b v0.3.6 https://github.com/kubernetes-incubator/metrics-server
+[root@master ~]# cd /root/metrics-server/deploy/1.8+/
+
+# 需要添加的参数
+hostNetwork: true
+image: registry.cn-hangzhou.aliyuncs.com/google_containers/metrics-server-amd64:v0.3.6
+args:
+- --kubelet-insecure-tls
+- --kubelet-preferred-address-types=InternalIP,Hostname,InternalDNS,ExternalDNS,ExternalIP
+
+[root@master 1.8+]# vim metrics-server-deployment.yaml
+[root@master 1.8+]# more metrics-server-deployment.yaml 
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: metrics-server
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-server
+  namespace: kube-system
+  labels:
+    k8s-app: metrics-server
+spec:
+  selector:
+    matchLabels:
+      k8s-app: metrics-server
+  template:
+    metadata:
+      name: metrics-server
+      labels:
+        k8s-app: metrics-server
+    spec:
+      # 添加内存
+      hostNetwork: true
+      serviceAccountName: metrics-server
+      volumes:
+      # mount in tmp so we can safely use from-scratch images and/or read-only containers
+      - name: tmp-dir
+        emptyDir: {}
+      containers:
+      - name: metrics-server
+      # image: k8s.gcr.io/metrics-server-amd64:v0.3.6
+      # 修改镜像地址
+        image: registry.cn-hangzhou.aliyuncs.com/google_containers/metrics-server-amd64:v0.3.6
+        imagePullPolicy: Always
+      # 添加参数
+        args:
+        - --kubelet-insecure-tls
+        - --kubelet-preferred-address-types=InternalIP,Hostname,InternalDNS,ExternalDNS,ExternalIP
+        volumeMounts:
+        - name: tmp-dir
+          mountPath: /tmp
+[root@master 1.8+]# kubectl apply -f ./
+clusterrole.rbac.authorization.k8s.io/system:aggregated-metrics-reader created
+clusterrolebinding.rbac.authorization.k8s.io/metrics-server:system:auth-delegator created
+rolebinding.rbac.authorization.k8s.io/metrics-server-auth-reader created
+apiservice.apiregistration.k8s.io/v1beta1.metrics.k8s.io created
+serviceaccount/metrics-server created
+deployment.apps/metrics-server created
+service/metrics-server created
+clusterrole.rbac.authorization.k8s.io/system:metrics-server created
+clusterrolebinding.rbac.authorization.k8s.io/system:metrics-server created
+
+# 查看pod运行情况
+[root@master 1.8+]# kubectl get pod -n kube-system
+NAME                              READY   STATUS    RESTARTS   AGE
+coredns-9d85f5447-kxvfx           0/1     Running   0          5h34m
+coredns-9d85f5447-qsx4m           0/1     Running   0          5h34m
+etcd-master                       1/1     Running   4          17d
+kube-apiserver-master             1/1     Running   4          17d
+kube-controller-manager-master    1/1     Running   4          17d
+kube-proxy-cb5v5                  1/1     Running   4          17d
+kube-proxy-k2hwq                  1/1     Running   5          17d
+kube-proxy-xzswd                  1/1     Running   4          17d
+kube-scheduler-master             1/1     Running   4          17d
+metrics-server-6b976979db-pdhjv   1/1     Running   0          51s
+
+# 使用kubectl top node 查看资源使用情况
+[root@master 1.8+]# kubectl top node
+NAME     CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%   
+master   100m         5%     1378Mi          51%       
+node1    26m          1%     610Mi           22%       
+node2    22m          1%     527Mi           22%
+
+# 至此,metrics-server安装完成
+```
+
 ### 准备 deployment 和 servie
+
+```sh
+# 创建 pc-hpa-pod.yaml 文件
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: dev
+spec:
+  strategy: # 策略
+    type: RollingUpdate # 滚动更新策略
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-pod
+  template:
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+        resources: # 资源配额
+          limits:  # 限制资源（上限）
+            cpu: "1" # CPU限制，单位是core数
+          requests: # 请求资源（下限）
+            cpu: "100m"  # CPU限制，单位是core数
+```
+```sh
+
+# 创建deployment
+[root@master 1.8+]# kubectl run nginx --image=nginx:1.17.1 --requests=cpu=100m -n dev
+kubectl run --generator=deployment/apps.v1 is DEPRECATED and will be removed in a future version. Use kubectl run --generator=run-pod/v1 or kubectl create instead.
+deployment.apps/nginx created
+
+# 创建service
+[root@master 1.8+]# kubectl expose deployment nginx --type=NodePort --port=80 -n dev
+service/nginx exposed
+
+# 查看
+[root@master 1.8+]# kubectl get deployment,pod,svc -n dev
+NAME                    READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/nginx   1/1     1            1           87s
+
+NAME                         READY   STATUS    RESTARTS   AGE
+pod/nginx-778cb5fb7b-v92v6   1/1     Running   0          87s
+
+NAME            TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
+service/nginx   NodePort   10.104.2.190   <none>        80:30709/TCP   78s
+```
 
 ### 部署 HPA
 
+```sh
+# 创建 pc-hpa.yaml 文件
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pc-hpa
+  namespace: dev
+spec:
+  minReplicas: 1  #最小pod数量
+  maxReplicas: 10 #最大pod数量
+  targetCPUUtilizationPercentage: 3 # CPU使用率指标
+  scaleTargetRef:   # 指定要控制的nginx信息
+    apiVersion:  apps/v1
+    kind: Deployment
+    name: nginx
+
+
+[root@master ~]# vim pc-hpa.yaml
+[root@master ~]# kubectl create -f pc-hpa.yaml
+horizontalpodautoscaler.autoscaling/pc-hpa created
+[root@master ~]# kubectl get hpa -n dev
+NAME     REFERENCE          TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+pc-hpa   Deployment/nginx   <unknown>/3%   1         10        0          4s    
+```
+
 ### 测试
 
+使用压测工具对 service 地址 [192.168.5.4:31830](http://192.168.1.12:30709/) 进行压测，然后通过控
+制台查看hpa和pod的变化
+
+![20240530225317](../Images/20240530225317.png)
 ## DaemonSet(DS) 
 
+**DaemonSet** 类型的控制器可以保证在集群中的每一台（或指定）节点上都运行一个副本。一般适用于日志收集、节点监控等场景。也就是说，如果一个**Pod**提供的功能是节点级别的（每个节点都需要且只需要一个），那么这类Pod就适合使用**DaemonSet**类型的控制器创建。类似于 日志...
+
+![20240530225317](../Images/image-20200612010223537.png)
+
+**DaemonSet** 控制器的特点：
+
+- 每当向集群中添加一个节点时，指定的 Pod 副本也将添加到该节点上
+- 当节点从集群中移除时，Pod 也就被垃圾回收了
+```sh
+# DaemonSet 资源清单文件
+apiVersion: apps/v1    # 版本号
+kind: DaemonSet        # 类型       
+metadata:              # 元数据
+  name:                # rs名称 
+  namespace:           # 所属命名空间 
+  labels:              #标签
+    controller: daemonset
+spec:                       # 详情描述
+  revisionHistoryLimit: 3   # 保留历史版本
+  updateStrategy:           # 更新策略
+    type: RollingUpdate     # 滚动更新策略
+    rollingUpdate:          # 滚动更新
+      maxUnavailable: 1     # 最大不可用状态的 Pod 的最大值，可以为百分比，也可以为整数
+  selector:                 # 选择器，通过它指定该控制器管理哪些pod
+    matchLabels:      # Labels匹配规则
+      app: nginx-pod
+    matchExpressions: # Expressions匹配规则
+      - {key: app, operator: In, values: [nginx-pod]}
+  template:           # 模板，当副本数量不足时，会根据下面的模板创建pod副本
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+        ports:
+        - containerPort: 80
+```
+
+```sh
+# 创建 pc-daemonset.yaml 文件
+apiVersion: apps/v1
+kind: DaemonSet      
+metadata:
+  name: pc-daemonset
+  namespace: dev
+spec: 
+  selector:
+    matchLabels:
+      app: nginx-pod
+  template:
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+
+
+[root@master ~]# kubectl delete ns dev
+namespace "dev" deleted
+[root@master ~]# vim pc-daemonset.yaml
+[root@master ~]# kubectl create ns dev
+namespace/dev created
+
+# 创建 daemonset
+[root@master ~]# kubectl create -f  pc-daemonset.yaml
+daemonset.apps/pc-daemonset created
+
+# 查看 daemonset
+[root@master ~]# kubectl get ds -n dev -o wide
+NAME           DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE   CONTAINERS   IMAGES         SELECTOR
+pc-daemonset   2         2         2       2            2           <none>          4s    nginx        nginx:1.17.1   app=nginx-pod
+
+# 查看 pod,发现在每个Node上都运行一个pod
+[root@master ~]#  kubectl get pods -n dev -o wide
+NAME                 READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
+pc-daemonset-2vbnr   1/1     Running   0          15s   10.244.2.72   node1   <none>           <none>
+pc-daemonset-ch44x   1/1     Running   0          15s   10.244.1.52   node2   <none>           <none>
+
+# 删除 daemonset
+[root@master ~]# kubectl delete -f pc-daemonset.yaml
+daemonset.apps "pc-daemonset" deleted
+```
 ## Job
 
+Job，主要用于负责**批量处理(一次要处理指定数量任务)短暂的一次性(每个任务仅运行一次就结束)**任务。Job特点如下：
+
+- 当Job创建的pod执行成功结束时，Job将记录成功结束的pod数量
+- 当成功结束的pod达到指定的数量时，Job将完成执行
+
+```sh
+```
 ## CronJob(CJ)
+
+```sh
+```
