@@ -131,15 +131,249 @@ pc-replicaset-vs7d6   1/1     Running   0          8s
 ```
 
 ### 扩缩容
+```shell
+# 编辑rs的副本数量，修改spec:replicas: 6即可
+[root@master ~]# kubectl edit rs pc-replicaset -n dev
+replicaset.apps/pc-replicaset edited
+
+# Please edit the object below. Lines beginning with a '#' will be ignored,
+# and an empty file will abort the edit. If an error occurs while saving this file will be
+# reopened with the relevant failures.
+#
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  creationTimestamp: "2024-05-30T09:26:18Z"
+  generation: 1
+  name: pc-replicaset
+  namespace: dev
+  resourceVersion: "772433"
+  selfLink: /apis/apps/v1/namespaces/dev/replicasets/pc-replicaset
+  uid: 59b91c99-3b4d-4336-8cff-867fe1a4e01d
+spec:
+  # 编辑这里的值即可
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx-pod
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - image: nginx:1.17.1
+        imagePullPolicy: IfNotPresent
+        name: nginx
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  availableReplicas: 3
+  fullyLabeledReplicas: 3
+  observedGeneration: 1
+  readyReplicas: 3
+  replicas: 3
+
+# 再次查看 pod
+[root@master ~]# kubectl get pods -n dev
+NAME                  READY   STATUS    RESTARTS   AGE
+pc-replicaset-44f4s   1/1     Running   0          104s
+pc-replicaset-6zw7d   1/1     Running   0          11m
+pc-replicaset-9wx98   1/1     Running   0          104s
+pc-replicaset-tzh6l   1/1     Running   0          11m
+pc-replicaset-vs7d6   1/1     Running   0          11m
+pc-replicaset-z2g7t   1/1     Running   0          104s
+
+# 当然也可以直接使用命令实现
+# 使用scale命令实现扩缩容， 后面--replicas=n直接指定目标数量即可
+[root@master ~]# kubectl scale rs pc-replicaset --replicas=2 -n dev
+replicaset.apps/pc-replicaset scaled
+
+# 命令运行完毕，立即查看，发现已经有4个开始准备退出了
+[root@master ~]# kubectl get pods -n dev
+NAME                  READY   STATUS        RESTARTS   AGE
+pc-replicaset-44f4s   0/1     Terminating   0          2m36s
+pc-replicaset-6zw7d   1/1     Running       0          12m
+pc-replicaset-9wx98   0/1     Terminating   0          2m36s
+pc-replicaset-tzh6l   1/1     Running       0          12m
+pc-replicaset-vs7d6   0/1     Terminating   0          12m
+pc-replicaset-z2g7t   0/1     Terminating   0          2m36s
+
+# 稍等片刻，剩下2个
+[root@master ~]# kubectl get pods -n dev
+NAME                  READY   STATUS    RESTARTS   AGE
+pc-replicaset-6zw7d   1/1     Running   0          12m
+pc-replicaset-tzh6l   1/1     Running   0          12m
+```
+
 
 ### 镜像升级
 
-### 镜像升级
+```shell
+
+# 编辑rs的容器镜像 - image: nginx:1.17.2
+[root@master ~]# kubectl edit rs pc-replicaset -n dev
+replicaset.apps/pc-replicaset edited
+
+
+# Please edit the object below. Lines beginning with a '#' will be ignored,
+# and an empty file will abort the edit. If an error occurs while saving this file will be
+# reopened with the relevant failures.
+#
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  creationTimestamp: "2024-05-30T09:26:18Z"
+  generation: 3
+  name: pc-replicaset
+  namespace: dev
+  resourceVersion: "774209"
+  selfLink: /apis/apps/v1/namespaces/dev/replicasets/pc-replicaset
+  uid: 59b91c99-3b4d-4336-8cff-867fe1a4e01d
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-pod
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      # 修改这里即可
+      - image: nginx:1.17.1
+        imagePullPolicy: IfNotPresent
+        name: nginx
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  availableReplicas: 2
+  fullyLabeledReplicas: 2
+  observedGeneration: 3
+  readyReplicas: 2
+  replicas: 2
+~                                                                                                                                                                                                    
+~                                                                                                                                                                                             
+~                                                                                                                                                                                                    
+"/tmp/kubectl-edit-uhgoo.yaml" 43L, 1161C
+
+
+# 再次查看，发现镜像版本已经变更
+[root@master ~]# kubectl edit rs pc-replicaset -n dev
+replicaset.apps/pc-replicaset edited
+[root@master ~]#  kubectl get rs -n dev -o wide
+NAME            DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES         SELECTOR
+pc-replicaset   2         2         2       15m   nginx        nginx:1.17.2   app=nginx-pod
+
+# 同样，也可以使用命令完成这个工作
+# kubectl set image rs rs名称 容器=镜像版本 -n namespace
+[root@master ~]#  kubectl set image rs pc-replicaset nginx=nginx:1.17.1  -n dev
+replicaset.apps/pc-replicaset image updated
+
+# 再次查看，发现镜像版本已经变更
+[root@master ~]#  kubectl get rs -n dev -o wide
+NAME            DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES         SELECTOR
+pc-replicaset   2         2         2       16m   nginx        nginx:1.17.1   app=nginx-pod
+
+```
 
 ### 删除ReplicaSet
 
+```shell
+# 使用 kubectl delete 命令会删除此RS以及 管理的Pod
+# 在 kubernetes 删除RS前，会 将RS 的replicasclear调整为0，等待所有的Pod被删除后，在执行RS对象的删除
+[root@master ~]# kubectl delete rs pc-replicaset -n dev
+replicaset.apps "pc-replicaset" deleted
+[root@master ~]# kubectl get pod -n dev -o wide
+NAME                  READY   STATUS        RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
+pc-replicaset-tzh6l   0/1     Terminating   0          20m   10.244.1.29   node2   <none>           <none>
+[root@master ~]# kubectl get pod -n dev -o wide
+No resources found in dev namespace.
+
+# 如果希望仅仅删除RS对象（保留Pod），可以使用kubectl delete命令时添加--cascade=false选项（不推荐）。
+[root@master ~]# kubectl delete rs pc-replicaset -n dev --cascade=false
+Error from server (NotFound): replicasets.apps "pc-replicaset" not found
+[root@master ~]# kubectl create -f pc-replicaset.yaml
+replicaset.apps/pc-replicaset created
+[root@master ~]# kubectl delete rs pc-replicaset -n dev --cascade=false
+replicaset.apps "pc-replicaset" deleted
+[root@master ~]# kubectl get pods -n dev
+NAME                  READY   STATUS    RESTARTS   AGE
+pc-replicaset-c2rfq   1/1     Running   0          12s
+pc-replicaset-gqlkr   1/1     Running   0          12s
+pc-replicaset-rdjqd   1/1     Running   0          12s
+
+# 可以使用yaml直接删除(推荐)
+[root@master ~]#  kubectl create -f pc-replicaset.yaml
+replicaset.apps/pc-replicaset created
+[root@master ~]# kubectl delete -f pc-replicaset.yaml
+replicaset.apps "pc-replicaset" deleted
+[root@master ~]# kubectl get pods -n dev
+No resources found in dev namespace.
+```
 
 ## Deployment(Deploy)
+
+为了解决服务编排的问题，**kubernetes**在**V1.2**版本开始，引入了**Deployment** 控制器。值得一提的是，这种控制器并不直接管理**pod**，而是通过管理**ReplicaSet**来简介管理**Pod**，即：**Deployment管理ReplicaSet，ReplicaSet管理Pod**。所以Deployment比ReplicaSet功能更加强大。
+
+![20200612005524778](../Images/image-20200612005524778.png)
+
+> Deployment主要功能有下面几个：
+> - 支持**ReplicaSet**的所有功能
+> - 支持发布的停止、继续
+> - 支持滚动升级和回滚版本
+
+```shell
+# Deployment 资源清单文件
+
+apiVersion: apps/v1     # 版本号
+kind: Deployment        # 类型       
+metadata:               # 元数据
+  name:                 # rs名称 
+  namespace:            # 所属命名空间 
+  labels:               # 标签
+    controller: deploy
+spec:                           # 详情描述
+  replicas: 3                   # 副本数量
+  revisionHistoryLimit: 3       # 保留历史版本
+  paused: false                 # 暂停部署，默认是false
+  progressDeadlineSeconds: 600  # 部署超时时间（s），默认是600
+  strategy:                     # 策略
+    type: RollingUpdate         # 滚动更新策略
+    rollingUpdate:              # 滚动更新
+      违规词汇: 30%              # 最大额外可以存在的副本数，可以为百分比，也可以为整数
+      maxUnavailable: 30%       # 最大不可用状态的 Pod 的最大值，可以为百分比，也可以为整数
+  selector:                     # 选择器，通过它指定该控制器管理哪些pod
+    matchLabels:                # Labels匹配规则
+      app: nginx-pod
+    matchExpressions:           # Expressions匹配规则
+      - {key: app, operator: In, values: [nginx-pod]}
+  template:                     # 模板，当副本数量不足时，会根据下面的模板创建pod副本
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+        ports:
+        - containerPort: 80
+```
 
 ### 创建 deployment
 
