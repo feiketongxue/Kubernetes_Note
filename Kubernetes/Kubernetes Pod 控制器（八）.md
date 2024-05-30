@@ -356,7 +356,7 @@ spec:                           # 详情描述
   strategy:                     # 策略
     type: RollingUpdate         # 滚动更新策略
     rollingUpdate:              # 滚动更新
-      违规词汇: 30%              # 最大额外可以存在的副本数，可以为百分比，也可以为整数
+      maxSurge: 30%              # 最大额外可以存在的副本数，可以为百分比，也可以为整数
       maxUnavailable: 30%       # 最大不可用状态的 Pod 的最大值，可以为百分比，也可以为整数
   selector:                     # 选择器，通过它指定该控制器管理哪些pod
     matchLabels:                # Labels匹配规则
@@ -507,7 +507,7 @@ pc-deployment-5d89bdfbf9-tvg6d   1/1     Running   0          14m
 pc-deployment-5d89bdfbf9-vgvg7   1/1     Running   0          14m
 ```
 
-### 版本回退
+### 镜像更新
 
 >**deployment**支持两种更新策略:**重建更新**和**滚动更新(默认)**,可以通过**strategy**指定策略类型,支持两个属性:
 >
@@ -517,18 +517,388 @@ pc-deployment-5d89bdfbf9-vgvg7   1/1     Running   0          14m
 >             RollingUpdate：滚动更新，就是杀死一部分，就启动一部分，在更新过程中，存在两个版本Pod
 >           rollingUpdate：当type为RollingUpdate时生效，用于为RollingUpdate设置参数，支持两个属性：
 >             maxUnavailable：用来指定在升级过程中不可用Pod的最大数量，默认为25%。
->             违规词汇： 用来指定在升级过程中可以超过期望的Pod的最大数量，默认为25%。
+>             maxSurge： 用来指定在升级过程中可以超过期望的Pod的最大数量，默认为25%。
 >
 
-#### 重建更新
+#### 重建更新(删除所有，再新增)
 
-#### 滚动更新
+```shell
+# 编辑 pc-deployment.yaml,在 spec 节点下添加更新策略
+spec:
+  strategy: # 策略
+    type: Recreate # 重建更新
+[root@master ~]# vim pc-deployment.yaml
+[root@master ~]# more pc-deployment.yaml 
+apiVersion: apps/v1
+kind: Deployment      
+metadata:
+  name: pc-deployment
+  namespace: dev
+spec: 
+  strategy: # 策略
+    type: Recreate # 重建更新
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx-pod
+  template:
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+
+# 变更镜像
+[root@master ~]# kubectl set image deployment pc-deployment nginx=nginx:1.17.2 -n dev
+deployment.apps/pc-deployment image updated
 
 
+[root@master ~]# kubectl delete ns dev
+namespace "dev" deleted
+[root@master ~]# kubectl create ns dev
+namespace/dev created
+[root@master ~]# kubectl apply -f pc-deployment.yaml 
+deployment.apps/pc-deployment created
+
+# 观察升级过程
+[root@master ~]# kubectl get pods -n dev -w
+NAME                             READY   STATUS    RESTARTS   AGE
+pc-deployment-5d89bdfbf9-47cxl   1/1     Running   0          32s
+pc-deployment-5d89bdfbf9-747v2   1/1     Running   0          32s
+pc-deployment-5d89bdfbf9-pbqmh   1/1     Running   0          32s
+pc-deployment-5d89bdfbf9-47cxl   1/1     Terminating   0          101s
+pc-deployment-5d89bdfbf9-747v2   1/1     Terminating   0          101s
+pc-deployment-5d89bdfbf9-pbqmh   1/1     Terminating   0          101s
+pc-deployment-5d89bdfbf9-47cxl   0/1     Terminating   0          102s
+pc-deployment-5d89bdfbf9-747v2   0/1     Terminating   0          103s
+pc-deployment-5d89bdfbf9-pbqmh   0/1     Terminating   0          103s
+pc-deployment-5d89bdfbf9-pbqmh   0/1     Terminating   0          104s
+pc-deployment-5d89bdfbf9-pbqmh   0/1     Terminating   0          104s
+pc-deployment-5d89bdfbf9-747v2   0/1     Terminating   0          104s
+pc-deployment-5d89bdfbf9-747v2   0/1     Terminating   0          104s
+pc-deployment-5d89bdfbf9-47cxl   0/1     Terminating   0          107s
+pc-deployment-5d89bdfbf9-47cxl   0/1     Terminating   0          107s
+pc-deployment-675d469f8b-d86lj   0/1     Pending       0          0s
+pc-deployment-675d469f8b-d86lj   0/1     Pending       0          0s
+pc-deployment-675d469f8b-9krrz   0/1     Pending       0          0s
+pc-deployment-675d469f8b-s6vw6   0/1     Pending       0          0s
+pc-deployment-675d469f8b-d86lj   0/1     ContainerCreating   0          0s
+pc-deployment-675d469f8b-9krrz   0/1     Pending             0          0s
+pc-deployment-675d469f8b-s6vw6   0/1     Pending             0          0s
+pc-deployment-675d469f8b-9krrz   0/1     ContainerCreating   0          1s
+pc-deployment-675d469f8b-s6vw6   0/1     ContainerCreating   0          1s
+pc-deployment-675d469f8b-d86lj   1/1     Running             0          25s
+pc-deployment-675d469f8b-9krrz   1/1     Running             0          25s
+pc-deployment-675d469f8b-s6vw6   1/1     Running             0          41s
+```
+
+#### 滚动更新（边删除，边新增）
+```sh
+# 编辑pc-deployment.yaml,在spec节点下添加更新策略
+spec:
+  strategy: # 策略
+    type: RollingUpdate # 滚动更新策略
+    rollingUpdate:
+      maxSurge: 25% 
+      maxUnavailable: 25%
+
+
+[root@master ~]# vim pc-deployment.yaml
+[root@master ~]# more pc-deployment.yaml 
+apiVersion: apps/v1
+kind: Deployment      
+metadata:
+  name: pc-deployment
+  namespace: dev
+spec:
+  strategy: # 策略
+    type: RollingUpdate # 滚动更新策略
+    rollingUpdate:
+      maxSurge: 25% 
+      maxUnavailable: 25% 
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx-pod
+  template:
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+
+[root@master ~]# kubectl apply -f pc-deployment.yaml 
+deployment.apps/pc-deployment configured
+[root@master ~]# kubectl get pods -n dev
+NAME                             READY   STATUS    RESTARTS   AGE
+pc-deployment-5d89bdfbf9-4hlqt   1/1     Running   0          33s
+pc-deployment-5d89bdfbf9-b42fw   1/1     Running   0          35s
+pc-deployment-5d89bdfbf9-fct7z   1/1     Running   0          31s
+
+# 变更镜像
+[root@master ~]# kubectl set image deployment pc-deployment nginx=nginx:1.17.3 -n dev
+deployment.apps/pc-deployment image updated
+
+# 观察升级过程
+[root@master ~]# kubectl get pods -n dev -w
+NAME                             READY   STATUS    RESTARTS   AGE
+pc-deployment-5d89bdfbf9-4hlqt   1/1     Running   0          70s
+pc-deployment-5d89bdfbf9-b42fw   1/1     Running   0          72s
+pc-deployment-5d89bdfbf9-fct7z   1/1     Running   0          68s
+pc-deployment-7865c58bdf-wbnst   0/1     Pending   0          0s
+pc-deployment-7865c58bdf-wbnst   0/1     Pending   0          0s
+pc-deployment-7865c58bdf-wbnst   0/1     ContainerCreating   0          0s
+pc-deployment-7865c58bdf-wbnst   1/1     Running             0          24s
+pc-deployment-5d89bdfbf9-fct7z   1/1     Terminating         0          94s
+pc-deployment-7865c58bdf-c6xtb   0/1     Pending             0          0s
+pc-deployment-7865c58bdf-c6xtb   0/1     Pending             0          0s
+pc-deployment-7865c58bdf-c6xtb   0/1     ContainerCreating   0          0s
+pc-deployment-5d89bdfbf9-fct7z   0/1     Terminating         0          95s
+pc-deployment-5d89bdfbf9-fct7z   0/1     Terminating         0          106s
+pc-deployment-5d89bdfbf9-fct7z   0/1     Terminating         0          106s
+pc-deployment-7865c58bdf-c6xtb   1/1     Running             0          24s
+pc-deployment-5d89bdfbf9-4hlqt   1/1     Terminating         0          2m
+pc-deployment-7865c58bdf-bvwxd   0/1     Pending             0          0s
+pc-deployment-7865c58bdf-bvwxd   0/1     Pending             0          1s
+pc-deployment-7865c58bdf-bvwxd   0/1     ContainerCreating   0          1s
+pc-deployment-5d89bdfbf9-4hlqt   0/1     Terminating         0          2m1s
+pc-deployment-7865c58bdf-bvwxd   1/1     Running             0          2s
+pc-deployment-5d89bdfbf9-b42fw   1/1     Terminating         0          2m4s
+pc-deployment-5d89bdfbf9-4hlqt   0/1     Terminating         0          2m2s
+pc-deployment-5d89bdfbf9-4hlqt   0/1     Terminating         0          2m2s
+pc-deployment-5d89bdfbf9-b42fw   0/1     Terminating         0          2m5s
+pc-deployment-5d89bdfbf9-b42fw   0/1     Terminating         0          2m6s
+pc-deployment-5d89bdfbf9-b42fw   0/1     Terminating         0          2m6s
+
+# 至此，新版本的pod创建完毕，就版本的pod销毁完毕
+# 中间过程是滚动进行的，也就是边销毁边创建
+```
+滚动更新的过程：
+
+![20200416140251491](../Images/image-20200416140251491.png)
+
+ps:镜像更新中 **rs** 的变化（滚动更新）:
+
+```sh
+[root@master ~]# kubectl delete -f pc-deployment.yaml 
+deployment.apps "pc-deployment" deleted
+[root@master ~]# kubectl create -f pc-deployment.yaml --record
+deployment.apps/pc-deployment created
+[root@master ~]# kubectl get pods,deploy,rs -n dev
+NAME                                 READY   STATUS    RESTARTS   AGE
+pod/pc-deployment-5d89bdfbf9-7nfs2   1/1     Running   0          25s
+pod/pc-deployment-5d89bdfbf9-gkknh   1/1     Running   0          25s
+pod/pc-deployment-5d89bdfbf9-mjmqh   1/1     Running   0          25s
+
+NAME                            READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/pc-deployment   3/3     3            3           25s
+
+NAME                                       DESIRED   CURRENT   READY   AGE
+replicaset.apps/pc-deployment-5d89bdfbf9   3         3         3       25s
+
+# 更新 images 版本
+[root@master ~]#  kubectl set image deployment pc-deployment nginx=nginx:1.17.2 -n dev 
+deployment.apps/pc-deployment image updated
+
+# 观察 pods 状态
+[root@master ~]# kubectl get pods -n dev -w
+NAME                             READY   STATUS    RESTARTS   AGE
+pc-deployment-5d89bdfbf9-7nfs2   1/1     Running   0          114s
+pc-deployment-5d89bdfbf9-gkknh   1/1     Running   0          114s
+pc-deployment-5d89bdfbf9-mjmqh   1/1     Running   0          114s
+pc-deployment-675d469f8b-ktcgq   0/1     Pending   0          0s
+pc-deployment-675d469f8b-ktcgq   0/1     Pending   0          0s
+pc-deployment-675d469f8b-ktcgq   0/1     ContainerCreating   0          0s
+pc-deployment-675d469f8b-ktcgq   1/1     Running             0          2s
+pc-deployment-5d89bdfbf9-7nfs2   1/1     Terminating         0          2m46s
+pc-deployment-675d469f8b-5pbn4   0/1     Pending             0          0s
+pc-deployment-675d469f8b-5pbn4   0/1     Pending             0          0s
+pc-deployment-675d469f8b-5pbn4   0/1     ContainerCreating   0          0s
+pc-deployment-675d469f8b-5pbn4   1/1     Running             0          1s
+pc-deployment-5d89bdfbf9-7nfs2   0/1     Terminating         0          2m47s
+pc-deployment-5d89bdfbf9-gkknh   1/1     Terminating         0          2m47s
+pc-deployment-675d469f8b-fr67w   0/1     Pending             0          0s
+pc-deployment-675d469f8b-fr67w   0/1     Pending             0          0s
+pc-deployment-675d469f8b-fr67w   0/1     ContainerCreating   0          0s
+pc-deployment-5d89bdfbf9-gkknh   0/1     Terminating         0          2m48s
+pc-deployment-5d89bdfbf9-7nfs2   0/1     Terminating         0          2m48s
+pc-deployment-5d89bdfbf9-7nfs2   0/1     Terminating         0          2m48s
+pc-deployment-675d469f8b-fr67w   1/1     Running             0          2s
+pc-deployment-5d89bdfbf9-mjmqh   1/1     Terminating         0          2m49s
+pc-deployment-5d89bdfbf9-mjmqh   0/1     Terminating         0          2m50s
+pc-deployment-5d89bdfbf9-mjmqh   0/1     Terminating         0          2m51s
+pc-deployment-5d89bdfbf9-mjmqh   0/1     Terminating         0          2m51s
+pc-deployment-5d89bdfbf9-gkknh   0/1     Terminating         0          2m54s
+pc-deployment-5d89bdfbf9-gkknh   0/1     Terminating         0          2m54s
+
+# 观察 rs 的状态
+[root@master ~]# kubectl get rs -n dev -w
+NAME                       DESIRED   CURRENT   READY   AGE
+pc-deployment-5d89bdfbf9   3         3         3       102s
+pc-deployment-675d469f8b   1         0         0       0s
+pc-deployment-675d469f8b   1         0         0       0s
+pc-deployment-675d469f8b   1         1         0       0s
+pc-deployment-675d469f8b   1         1         1       2s
+pc-deployment-5d89bdfbf9   2         3         3       2m46s
+pc-deployment-675d469f8b   2         1         1       2s
+pc-deployment-5d89bdfbf9   2         3         3       2m46s
+pc-deployment-675d469f8b   2         1         1       2s
+pc-deployment-675d469f8b   2         2         1       2s
+pc-deployment-5d89bdfbf9   2         2         2       2m46s
+pc-deployment-675d469f8b   2         2         2       3s
+pc-deployment-5d89bdfbf9   1         2         2       2m47s
+pc-deployment-675d469f8b   3         2         2       3s
+pc-deployment-5d89bdfbf9   1         2         2       2m47s
+pc-deployment-675d469f8b   3         2         2       3s
+pc-deployment-675d469f8b   3         3         2       3s
+pc-deployment-5d89bdfbf9   1         1         1       2m47s
+pc-deployment-675d469f8b   3         3         3       5s
+pc-deployment-5d89bdfbf9   0         1         1       2m49s
+pc-deployment-5d89bdfbf9   0         1         1       2m49s
+pc-deployment-5d89bdfbf9   0         0         0       2m49s
+
+
+[root@master ~]# kubectl get pods,deploy,rs -n dev
+NAME                                 READY   STATUS    RESTARTS   AGE
+pod/pc-deployment-675d469f8b-5pbn4   1/1     Running   0          96s
+pod/pc-deployment-675d469f8b-fr67w   1/1     Running   0          95s
+pod/pc-deployment-675d469f8b-ktcgq   1/1     Running   0          98s
+
+NAME                            READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/pc-deployment   3/3     3            3           4m22s
+# 多了一个
+NAME                                       DESIRED   CURRENT   READY   AGE
+replicaset.apps/pc-deployment-5d89bdfbf9   0         0         0       4m22s
+replicaset.apps/pc-deployment-675d469f8b   3         3         3       98s
+
+# 查看rs,发现原来的rs的依旧存在，只是pod数量变为了0，而后又新产生了一个rs，pod数量为4
+# 其实这就是deployment能够进行版本回退
+
+```
+
+### 版本回退
+
+deployment支持版本升级过程中的暂停、继续功能以及版本回退等诸多功能，下面具体来看.
+
+kubectl rollout： 版本升级相关功能，支持下面的选项：
+
+- status  显示当前升级状态
+- history 显示 升级历史记录
+- pause   暂停版本升级过程
+- resume  继续已经暂停的版本升级过程
+- restart 重启版本升级过程
+- undo    回滚到上一级版本（可以使用--to-revision回滚到指定版本）
+
+```sh
+# 查看当前升级版本的状态
+[root@master ~]# kubectl rollout status deploy pc-deployment -n dev
+deployment "pc-deployment" successfully rolled out
+
+# 查看升级历史记录
+[root@master ~]# kubectl rollout history deploy pc-deployment -n dev
+deployment.apps/pc-deployment 
+REVISION  CHANGE-CAUSE
+1         kubectl create --filename=pc-deployment.yaml --record=true
+2         kubectl create --filename=pc-deployment.yaml --record=true
+# 可以发现有两次版本记录，说明完成过两次升级
+
+
+# 版本回滚
+# 这里直接使用--to-revision=1回滚到了1版本， 如果省略这个选项，就是回退到上个版本，就是2版本
+[root@master ~]# kubectl rollout undo deployment pc-deployment --to-revision=1 -n dev
+deployment.apps/pc-deployment rolled back
+[root@master ~]# kubectl rollout history deploy pc-deployment -n dev
+deployment.apps/pc-deployment 
+REVISION  CHANGE-CAUSE
+2         kubectl create --filename=pc-deployment.yaml --record=true
+3         kubectl create --filename=pc-deployment.yaml --record=true
+4         kubectl create --filename=pc-deployment.yaml --record=true
+
+# 查看发现，通过nginx镜像版本可以发现到了第一版
+[root@master ~]# kubectl get deploy -n dev -o wide
+NAME            READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES         SELECTOR
+pc-deployment   3/3     3            3           75m   nginx        nginx:1.17.1   app=nginx-pod
+
+# 查看rs，发现第一个rs中有3个pod运行，后面两个版本的rs中pod为运行
+# 其实deployment之所以可是实现版本的回滚，就是通过记录下历史rs来实现的，
+# 一旦想回滚到哪个版本，只需要将当前版本pod数量降为0，然后将回滚版本的pod提升为目标数量就可以了
+
+[root@master ~]# kubectl get rs -n dev
+NAME                       DESIRED   CURRENT   READY   AGE
+pc-deployment-5d89bdfbf9   3         3         3       75m
+pc-deployment-675d469f8b   0         0         0       73m
+pc-deployment-7865c58bdf   0         0         0       2m1s
+```
 
 ### 金丝雀发布
 
+**Deployment** 控制器支持控制更新过程中的控制，如“暂停(pause)”或“继续(resume)”更新操作。
+
+比如有一批新的**Pod**资源创建完成后立即暂停更新过程，此时，仅存在一部分新版本的应用，主体部分还是旧的版本。然后，再筛选一小部分的用户请求路由到新版本的Pod应用，继续观察能否稳定地按期望的方式运行。确定没问题之后再继续完成余下的Pod资源滚动更新，否则立即回滚更新操作。这就是所谓的金丝雀发布。
+
+```sh
+# 更新deployment的版本，并配置暂停deployment
+[root@master ~]# kubectl set image deploy pc-deployment nginx=nginx:1.17.4 -n dev && kubectl rollout pause deployment pc-deployment  -n dev
+deployment.apps/pc-deployment image updated
+deployment.apps/pc-deployment paused
+[root@master ~]# kubectl get rs -n dev
+NAME                       DESIRED   CURRENT   READY   AGE
+pc-deployment-5d89bdfbf9   3         3         3       81m
+pc-deployment-675d469f8b   0         0         0       79m
+pc-deployment-6c9f56fcfb   1         1         0       8s
+pc-deployment-7865c58bdf   0         0         0       8m3s
+
+
+
+
+# 观察更新状态
+[root@master ~]# kubectl rollout status deploy pc-deployment -n dev
+Waiting for deployment "pc-deployment" rollout to finish: 1 out of 3 new replicas have been updated...
+# 监控更新的过程，可以看到已经新增了一个资源，但是并未按照预期的状态去删除一个旧的资源，就是因为使用了pause暂停命令
+
+[root@master ~]# kubectl get rs -n dev -o wide
+NAME                       DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES         SELECTOR
+pc-deployment-5d89bdfbf9   3         3         3       86m   nginx        nginx:1.17.1   app=nginx-pod,pod-template-hash=5d89bdfbf9
+pc-deployment-675d469f8b   0         0         0       84m   nginx        nginx:1.17.2   app=nginx-pod,pod-template-hash=675d469f8b
+pc-deployment-6c9f56fcfb   1         1         1       5m    nginx        nginx:1.17.4   app=nginx-pod,pod-template-hash=6c9f56fcfb
+pc-deployment-7865c58bdf   0         0         0       12m   nginx        nginx:1.17.3   app=nginx-pod,pod-template-hash=7865c58bdf
+
+
+[root@master ~]# kubectl rollout resume deploy pc-deployment -n dev
+deployment.apps/pc-deployment resumed
+
+# 查看最后的更新情况
+[root@master ~]# kubectl get rs -n dev -o wide
+NAME                       DESIRED   CURRENT   READY   AGE     CONTAINERS   IMAGES         SELECTOR
+pc-deployment-5d89bdfbf9   0         0         0       87m     nginx        nginx:1.17.1   app=nginx-pod,pod-template-hash=5d89bdfbf9
+pc-deployment-675d469f8b   0         0         0       84m     nginx        nginx:1.17.2   app=nginx-pod,pod-template-hash=675d469f8b
+pc-deployment-6c9f56fcfb   3         3         3       5m52s   nginx        nginx:1.17.4   app=nginx-pod,pod-template-hash=6c9f56fcfb
+pc-deployment-7865c58bdf   0         0         0       13m     nginx        nginx:1.17.3   app=nginx-pod,pod-template-hash=7865c58bdf
+
+
+[root@master ~]# kubectl get pods -n dev
+NAME                             READY   STATUS    RESTARTS   AGE
+pc-deployment-6c9f56fcfb-9t95g   1/1     Running   0          29s
+pc-deployment-6c9f56fcfb-nhzq4   1/1     Running   0          20s
+pc-deployment-6c9f56fcfb-qz9h2   1/1     Running   0          5m58s
+```
+
+### 删除 deployment
+```sh
+# 删除 deployment，其下的rs和pod也将被删除
+[root@master ~]#  kubectl delete -f pc-deployment.yaml
+deployment.apps "pc-deployment" deleted
+```
+
 ## Horizontal Pod Autoscaler(HPA)
+
+现在已经实现通过手工执行**kubectl scale**命令实现**Pod**扩容或缩容，但是这显然不符合**Kubernetes**的定位目标--自动化、智能化。 **Kubernetes**期望可以实现通过监测**Pod**的使用情况，实现**pod**数量的自动调整，于是就产生了 **Horizontal Pod Autoscaler** 这种控制器。
+![20200608155858271](../Images/image-20200608155858271.png)
+
 
 ### 安装metrics-server
 
