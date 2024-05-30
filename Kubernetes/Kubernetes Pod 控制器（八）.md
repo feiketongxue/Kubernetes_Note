@@ -28,23 +28,23 @@
 
 ![20240321113605628](../Images/image-20240321113605628.png)
 
-```sh
-# ReplicaSet的资源清单文件
-apiVersion: apps/v1 	# 版本号
-kind: ReplicaSet 			# 类型   
-metadata: 						# 元数据
-  name:			 # rs名称 
-  namespace: # 所属命名空间 
-  labels: 	 # 标签
+```shell
+                           # ReplicaSet的资源清单文件
+apiVersion: apps/v1 	   # 版本号
+kind: ReplicaSet 	   # 类型   
+metadata: 		   # 元数据
+  name:			   # rs名称 
+  namespace:               # 所属命名空间 
+  labels: 	           # 标签
     controller: rs
-spec: 								# 详情描述
-  replicas: 3 				# 副本数量
-  selector: 					# 选择器，通过它指定该控制器管理哪些pod
-    matchLabels:      # Labels匹配规则
+spec: 			   # 详情描述
+  replicas: 3 		   # 副本数量
+  selector: 		   # 选择器，通过它指定该控制器管理哪些pod
+    matchLabels:           # Labels匹配规则
       app: nginx-pod
-    matchExpressions: # Expressions匹配规则
+    matchExpressions:      # Expressions匹配规则
       - {key: app, operator: In, values: [nginx-pod]}
-  template: 					# 模板，当副本数量不足时，会根据下面的模板创建pod副本
+  template: 		   # 模板，当副本数量不足时，会根据下面的模板创建pod副本
     metadata:
       labels:
         app: nginx-pod
