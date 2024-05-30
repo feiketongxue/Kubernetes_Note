@@ -9,11 +9,18 @@
 
 ### 定向调度
 
-​	定向调度，指的是利用在`Pod`上声明`nodeName`或者`nodeSelector`，以此将`Pod`调度到期望的`node`节点上。注意，这里的调度是强制的，这就是意味着即使要调度的目标`Node`不存在，也会向上面进行调度，只不过`Pod`运行失败而已。
+```
+定向调度，指的是利用在
+```
+
+`Pod`上声明`nodeName`或者`nodeSelector`，以此将`Pod`调度到期望的`node`节点上。注意，这里的调度是强制的，这就是意味着即使要调度的目标`Node`不存在，也会向上面进行调度，只不过`Pod`运行失败而已。
 
 ###### NodeName
 
-​	`NodeName`用于强制约束将`Pod`调度到指定的`Name`的节点上，这种方式，其实是直接跳过`Scheduler`的调度逻辑，
+```
+```
+
+`NodeName`用于强制约束将`Pod`调度到指定的`Name`的节点上，这种方式，其实是直接跳过`Scheduler`的调度逻辑，
 
 直接将`Pod`调度到指定名称的节点。
 
@@ -59,7 +66,10 @@ pod-nodename   0/1     Pending   0          6s    <none>   node3   <none>       
 
 ###### NodeSelector
 
-​	`NodeSelector`用于将`Pod`调度到添加了指定标签的`node`节点上，它是通过`Kubernetes`的`label-selector`机制实现的，也就是说，在`Pod`创建之前，会由`Scheduler`使用`MatchNodeSelector`调度策略进行`label`匹配，找出目标`node`，然后将`Pod`调度到目标节点，该匹配规则是强制约束。
+```
+```
+
+`NodeSelector`用于将`Pod`调度到添加了指定标签的`node`节点上，它是通过`Kubernetes`的`label-selector`机制实现的，也就是说，在`Pod`创建之前，会由`Scheduler`使用`MatchNodeSelector`调度策略进行`label`匹配，找出目标`node`，然后将`Pod`调度到目标节点，该匹配规则是强制约束。
 
 ```sh
 # node 节点添加标签
@@ -113,7 +123,7 @@ Node:         <none>
 Labels:       <none>
 Annotations:  <none>
 Status:       Pending
-IP:           
+IP:         
 IPs:          <none>
 Containers:
   nginx:
@@ -173,12 +183,12 @@ pod.spec.affinity.nodeAffinity
       matchFields   
       # 按节点标签列出的节点选择器要求列表(推荐)
       matchExpressions   
-      
+    
         key    键
         values 值
         operat or 关系符 支持Exists, DoesNotExist, In, NotIn, Gt, Lt
-        
-        
+      
+      
 	# 优先调度到满足指定的规则的Node，相当于软限制 (倾向)
   preferredDuringSchedulingIgnoredDuringExecution 
   	# 一个节点选择器项，与相应的权重相关联
@@ -255,7 +265,7 @@ Node:         <none>
 Labels:       <none>
 Annotations:  <none>
 Status:       Pending
-IP:           
+IP:         
 IPs:          <none>
 Containers:
   nginx:
@@ -339,17 +349,18 @@ pod-nodeaffinity-preferred   1/1     Running   0          6s
 
 ```
 
-> > ```
-> > NodeAffinity 规则设置的注意事项：
-> >     1 如果同时定义了 nodeSelector 和 nodeAffinity ，那么必须两个条件都得到满足，Pod 才能运行在指定的 Node 上
-> >     2 如果 nodeAffinity 指定了多个 nodeSelectorTerms ，那么只需要其中一个能够匹配成功即可
-> >     3 如果一个 nodeSelectorTerms 中有多个 matchExpressions ，则一个节点必须满足所有的才能匹配成功
-> >     4 如果一个 pod 所在的 Node 在 Pod 运行期间其标签发生了改变，不再符合该 Pod 的节点亲和性需求，则系统将忽略此变化
-> > ```
+>> ```
+>> NodeAffinity 规则设置的注意事项：
+>>     1 如果同时定义了 nodeSelector 和 nodeAffinity ，那么必须两个条件都得到满足，Pod 才能运行在指定的 Node 上
+>>     2 如果 nodeAffinity 指定了多个 nodeSelectorTerms ，那么只需要其中一个能够匹配成功即可
+>>     3 如果一个 nodeSelectorTerms 中有多个 matchExpressions ，则一个节点必须满足所有的才能匹配成功
+>>     4 如果一个 pod 所在的 Node 在 Pod 运行期间其标签发生了改变，不再符合该 Pod 的节点亲和性需求，则系统将忽略此变化
+>> ```
+>>
 
-######  PodAffinity(pod亲和性)
+###### PodAffinity(pod亲和性)
 
- **PodAffinity 主要实现以运行的 Pod 为参照，实现让新创建的 Pod 跟参照 pod 在同一区域的功能**
+**PodAffinity 主要实现以运行的 Pod 为参照，实现让新创建的 Pod 跟参照 pod 在同一区域的功能**
 
 ```sh
 # PodAffinity 可以配置项
@@ -365,7 +376,7 @@ pod.spec.affinity.podAffinity
       matchLabels    		# 指多个matchExpressions映射的内容
   preferredDuringSchedulingIgnoredDuringExecution # 软限制
     podAffinityTerm  # 选项
-      namespaces      
+      namespaces    
       topologyKey
       labelSelector
         matchExpressions  
@@ -454,7 +465,7 @@ Node:         <none>
 Labels:       <none>
 Annotations:  <none>
 Status:       Pending
-IP:           
+IP:         
 IPs:          <none>
 Containers:
   nginx:
@@ -563,11 +574,22 @@ pod-podantiaffinity-required   1/1     Running   0          5s    10.244.2.15   
 
 ##### 污点（Taints）
 
-​	前面的调度方式都是站在`Pod`的角度上，通过在`Pod`上添加属性，来确定`Pod`是否要调度到指定的`Node`上，其实我们也可以站在`Node`的角度上，通过在`Node`上添加**污点**属性，来决定是否允许`Pod`调度过来。
+```
+前面的调度方式都是站在
+```
 
-​	`Node`被设置上污点之后就和`Pod`之间存在了一种相斥关系，进而拒绝`Pod`调度进来，甚至可以将已经存在的`Pod`驱逐出去。
+`Pod`的角度上，通过在`Pod`上添加属性，来确定`Pod`是否要调度到指定的`Node`上，其实我们也可以站在`Node`的角度上，通过在`Node`上添加**污点**属性，来决定是否允许`Pod`调度过来。
 
-​	污点的格式为：`key=value:effect`,`key`和`value`是污点的标签，`effect`描述污点的作用，支持以下三个选项：
+```
+```
+
+`Node`被设置上污点之后就和`Pod`之间存在了一种相斥关系，进而拒绝`Pod`调度进来，甚至可以将已经存在的`Pod`驱逐出去。
+
+```
+污点的格式为：
+```
+
+`key=value:effect`,`key`和`value`是污点的标签，`effect`描述污点的作用，支持以下三个选项：
 
 - `PreferNoSchedule`：`kubernetes`将尽量避免把`Pod`调度到具有该污点的`Node`上，除非没有其他节点可调度
 - `NoSchedule`：`kubernetes`将不会把`Pod`调度到具有该污点的`Node`上，但不会影响当前`Node`上已存在的`Pod`
@@ -600,7 +622,7 @@ kubectl taint nodes node1 key-
 > master   Ready      master   9d    v1.17.4
 > node1    Ready      <none>   9d    v1.17.4
 > node2    NotReady   <none>   9d    v1.17.4
-> 
+>
 > # 为 node1 设置污点（PreferNoSchedule）
 > [root@master Download]# kubectl taint nodes node1 tag=heima:PreferNoSchedule
 > node/node1 tainted
@@ -681,7 +703,7 @@ kubectl taint nodes node1 key-
 >   memory             50Mi (2%)  0 (0%)
 >   ephemeral-storage  0 (0%)     0 (0%)
 > Events:              <none>
-> 
+>
 > # 创建 pod1 
 > [root@master Download]# kubectl run taint1 --image=nginx:1.17.1 -n dev
 > kubectl run --generator=deployment/apps.v1 is DEPRECATED and will be removed in a future version. Use kubectl run --generator=run-pod/v1 or kubectl create instead.
@@ -692,7 +714,7 @@ kubectl taint nodes node1 key-
 > pod-podaffinity-target         1/1     Running   0          86m   10.244.1.14   node1   <none>           <none>
 > pod-podantiaffinity-required   1/1     Running   0          55m   10.244.2.15   node2   <none>           <none>
 > taint1-766c47bf55-ngsv5        1/1     Running   0          16s   10.244.1.16   node1   <none>           <none>
-> 
+>
 > # 为 node1 设置污点（取消 PreferNoSchedule,设置 NoSchedule）
 > [root@master Download]# kubectl taint node node1 tag:PreferNoSchedule-
 > node/node1 untainted
@@ -704,7 +726,7 @@ kubectl taint nodes node1 key-
 > pod-podaffinity-target         1/1     Running       0          91m
 > pod-podantiaffinity-required   1/1     Terminating   0          60m
 > taint1-766c47bf55-ngsv5        1/1     Running       0          5m36s
-> 
+>
 > # 创建 pod2 
 > [root@master Download]# kubectl run taint2 --image=nginx1.17.1 -n dev
 > kubectl run --generator=deployment/apps.v1 is DEPRECATED and will be removed in a future version. Use kubectl run --generator=run-pod/v1 or kubectl create instead.
@@ -725,7 +747,7 @@ kubectl taint nodes node1 key-
 >                 run=taint2
 > Annotations:    <none>
 > Status:         Pending
-> IP:             
+> IP:           
 > IPs:            <none>
 > Controlled By:  ReplicaSet/taint2-579777fbbf
 > Containers:
@@ -753,19 +775,19 @@ kubectl taint nodes node1 key-
 >   ----     ------            ----               ----               -------
 >   # 错误信息
 >   Warning  FailedScheduling  84s (x2 over 84s)  default-scheduler  0/3 nodes are available: 3 node(s) had taints that the pod didn't tolerate.
-> 
+>
 > # 为 node1 设置污点（取消NoSchedule，设置NoExecute）
 > [root@master Download]# kubectl taint node node1 tag:NoSchedule-
 > node/node1 untainted
 > [root@master Download]# kubectl taint node node1 tag=heima:NoExecute
 > node/node1 tainted
-> 
+>
 > [root@master Download]# kubectl get pods -n dev
 > NAME                           READY   STATUS        RESTARTS   AGE
 > pod-podantiaffinity-required   1/1     Terminating   0          66m
 > taint1-766c47bf55-28wxv        0/1     Pending       0          88s
 > taint2-579777fbbf-2r2c7        0/1     Pending       0          88s
-> 
+>
 > # 创建 pod3
 > [root@master Download]# kubectl run taint3 --image=nginx1.17.1 -n dev
 > kubectl run --generator=deployment/apps.v1 is DEPRECATED and will be removed in a future version. Use kubectl run --generator=run-pod/v1 or kubectl create instead.
@@ -776,8 +798,8 @@ kubectl taint nodes node1 key-
 > taint1-766c47bf55-28wxv        0/1     Pending       0          2m9s
 > taint2-579777fbbf-2r2c7        0/1     Pending       0          2m9s
 > taint3-76bbbd48cc-plrgg        0/1     Pending       0          5s
-> 
-> 
+>
+>
 > # PS: 使用 kubeadm 搭建的集群，默认就会给master 节点添加一个污点标记，所以pod就不会调度到master节点上
 > [root@master Download]# kubectl describe nodes master
 > Name:               master
@@ -864,10 +886,13 @@ kubectl taint nodes node1 key-
 
 ##### 容忍（Toleration）
 
-​	上面介绍了污点的作用，可以在`node`上添加污点用于拒绝`pod`调度上来，但是如果就是想将一个`pod`调度到一个有污点的`node`上来，这时候就会使用到**容忍**
+```
+上面介绍了污点的作用，可以在
+```
+
+`node`上添加污点用于拒绝`pod`调度上来，但是如果就是想将一个`pod`调度到一个有污点的`node`上来，这时候就会使用到**容忍**
 
 ![image-20240307163019107](../Images/image-20240307163019107.png)
-
 
 > 污点就是拒绝，容忍就是忽略，`Node`通过污点拒绝`pod`调度上去，`Pod`通过容忍忽略拒绝
 >
@@ -884,12 +909,15 @@ kubectl taint nodes node1 key-
 >    tolerationSeconds   # 容忍时间, 当effect为NoExecute时生效，表示pod在Node上的停留时间
 > ```
 
-​	**案例：**
+```
+```
+
+**案例：**
 
 1. 上面通过污点已经在`node1`节点上打上了`NoExecute`的污点，此时`pod`是调度不上去的
 2. 可以通过给 `pod`添加容忍，然后将其调度`node1`上去
 
-```shell
+```sh
 # 创建  pod-toleration.yaml 文件
 apiVersion: v1
 kind: Pod
@@ -946,10 +974,10 @@ spec:
   containers:
   - name: nginx
     image: nginx:1.17.1
-  tolerations:                         
-  - key: "tag"                 
-    operator: "Equal"           
-    value: "heima"             
+  tolerations:   
+  - key: "tag"   
+    operator: "Equal"   
+    value: "heima"   
     effect: "NoExecute"   
 [root@master Download]# kubectl create -f pod-toleration.yaml 
 pod/pod-toleration created
@@ -965,5 +993,8 @@ taint3-76bbbd48cc-plrgg        0/1     Pending       0          18m   <none>    
 [root@master Download]# kubectl get pods pod-toleration -n dev -o wide
 NAME             READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
 pod-toleration   1/1     Running   0          41s   10.244.1.19   node1   <none>           <none>
+# 这里记住去除 ndoe1 的污点和 启动node2 方便后面跟着测试
+[root@master ~]# kubectl taint nodes node1 tag-
+node/node1 untainted
 
 ```
