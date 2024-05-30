@@ -412,7 +412,6 @@ pod-podaffinity-target   1/1     Running   0          6s
 
 ```sh
 # 创建 pod-podaffinity-required.yaml
-# 新
 apiVersion: v1
 kind: Pod
 metadata:
@@ -422,7 +421,7 @@ spec:
   containers:
   - name: nginx
     image: nginx:1.17.1
-  affinity:  #亲和性设置
+  affinity:      #亲和性设置
     podAffinity: #设置pod亲和性
       requiredDuringSchedulingIgnoredDuringExecution: # 硬限制
       - labelSelector:
@@ -499,7 +498,7 @@ pod-podaffinity-required   1/1     Running   0          6s
 
 ```
 
-**关于`PodAffinity`的 `preferredDuringSchedulingIgnoredDuringExecution`，这里不再演示**
+**关于`PodAffinity`的 `preferredDuringSchedulingIgnoredDuringExecution`(软限制)，这里不再演示**
 
 ###### PodAntiAffinity （pod反亲和性）
 
