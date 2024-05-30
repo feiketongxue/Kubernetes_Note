@@ -32,8 +32,8 @@ spec:
 ```
 
 ```sh
-[root@master Download]# vim pod-nodeName.yaml
-[root@master Download]# kubectl create -f pod-nodeName.yaml 
+[root@master Download]# vim pod-nodename.yaml
+[root@master Download]# kubectl create -f pod-nodename.yaml 
 pod/pod-nodename created
 [root@master Download]# kubectl get pod pod-nodename -n dev
 NAME           READY   STATUS    RESTARTS   AGE
@@ -44,12 +44,12 @@ NAME           READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATE
 pod-nodename   1/1     Running   0          29s   10.244.1.11   node1   <none>           <none>
 
 # 接下来，删除 pod，修改 nodeName 的值为 node3（并没有node3节点）
-[root@master Download]# vim pod-nodeName.yaml 
-[root@master Download]# kubectl create -f pod-nodeName.yaml 
+[root@master Download]# vim pod-nodename.yaml 
+[root@master Download]# kubectl create -f pod-nodename.yaml 
 Error from server (AlreadyExists): error when creating "pod-nodeName.yaml": pods "pod-nodename" already exists
-[root@master Download]# kubectl delete -f pod-nodeName.yaml 
+[root@master Download]# kubectl delete -f pod-nodename.yaml 
 pod "pod-nodename" deleted
-[root@master Download]# kubectl create -f pod-nodeName.yaml 
+[root@master Download]# kubectl create -f pod-nodename.yaml 
 pod/pod-nodename created
 # 再次查看，发现已经向Node3节点调度，但是由于不存在 node3节点，所以 pod 无法正常运行
 [root@master Download]# kubectl get pod pod-nodename -n dev -o wide
