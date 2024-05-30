@@ -160,7 +160,7 @@ Events:
 >
 > **反亲和性**：当应用的采用多副本部署时，有必要采用反亲和性让各个应用实例打散分布在各个`node`上，这样可以提高服务的高可以用性。
 
-###### NodeAffinity
+###### NodeAffinity （node亲和性）
 
 ```sh
 # NodeAffinity 可配置项
@@ -347,7 +347,7 @@ pod-nodeaffinity-preferred   1/1     Running   0          6s
 > >     4 如果一个 pod 所在的 Node 在 Pod 运行期间其标签发生了改变，不再符合该 Pod 的节点亲和性需求，则系统将忽略此变化
 > > ```
 
-###### PodAffinity
+######  PodAffinity(pod亲和性)
 
  **PodAffinity 主要实现以运行的 Pod 为参照，实现让新创建的 Pod 跟参照 pod 在同一区域的功能**
 
@@ -501,7 +501,7 @@ pod-podaffinity-required   1/1     Running   0          6s
 
 **关于`PodAffinity`的 `preferredDuringSchedulingIgnoredDuringExecution`，这里不再演示**
 
-###### PodAntiAffinity
+###### PodAntiAffinity （pod反亲和性）
 
 **PodAntiAffinity主要以运行的Pod为参照，让新创建的Pod跟参照pod不在一个区域中的功能**
 
@@ -574,7 +574,7 @@ pod-podantiaffinity-required   1/1     Running   0          5s    10.244.2.15   
 - `NoSchedule`：`kubernetes`将不会把`Pod`调度到具有该污点的`Node`上，但不会影响当前`Node`上已存在的`Pod`
 - `NoExecute`：`kubernetes`将不会把`Pod`调度到具有该污点的`Node`上，同时也会将`Node`上已存在的`Pod`隔离
 
-![image-20240307153813422](../../Library/Application%20Support/typora-user-images/image-20240307153813422.png)
+![image-20240307153813422](../Images/image-20240307153813422.png)
 
 ```sh
 # 使用 kubectl 设置和去除污点的命令 示例如下：
