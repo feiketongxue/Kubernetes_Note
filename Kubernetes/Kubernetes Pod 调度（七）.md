@@ -866,7 +866,8 @@ kubectl taint nodes node1 key-
 
 ​	上面介绍了污点的作用，可以在`node`上添加污点用于拒绝`pod`调度上来，但是如果就是想将一个`pod`调度到一个有污点的`node`上来，这时候就会使用到**容忍**
 
-<img src="../../Library/Application%20Support/typora-user-images/image-20240307163019107.png" alt="image-20240307163019107" style="zoom:80%;" />
+![image-20240307163019107](../Images/image-20240307163019107.png)
+
 
 > 污点就是拒绝，容忍就是忽略，`Node`通过污点拒绝`pod`调度上去，`Pod`通过容忍忽略拒绝
 >
