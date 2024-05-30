@@ -377,9 +377,154 @@ spec:                           # 详情描述
 
 ### 创建 deployment
 
+```sh
+# 创建 pc-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment      
+metadata:
+  name: pc-deployment
+  namespace: dev
+spec: 
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx-pod
+  template:
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+
+
+[root@master ~]# vim pc-deployment.yaml
+[root@master ~]# kubectl create -f pc-deployment.yaml 
+deployment.apps/pc-deployment created
+
+# 查看 deployment
+# up-to-date 最新版本 pod 的数量
+# available 当前可用的 pod 的数量
+[root@master ~]# kubectl get deploy pc-deployment -n dev
+NAME            READY   UP-TO-DATE   AVAILABLE   AGE
+pc-deployment   3/3     3            3           8m33s
+# 查看 rs 
+# 发现 rs的名称是在原来 deployment 的名字后哦面添加了一个10位随机字符串
+[root@master ~]# kubectl get rs -n dev
+NAME                       DESIRED   CURRENT   READY   AGE
+pc-deployment-5d89bdfbf9   3         3         3       8m51s
+# 查看 pod，也是如此
+[root@master ~]# kubectl get pods -n dev
+NAME                             READY   STATUS    RESTARTS   AGE
+pc-deployment-5d89bdfbf9-f9zdt   1/1     Running   0          9m
+pc-deployment-5d89bdfbf9-tvg6d   1/1     Running   0          9m
+pc-deployment-5d89bdfbf9-vgvg7   1/1     Running   0          9m
+```
+
 ### 扩缩容
 
+```sh
+# 方式一：
+# 变更副本数量为5个
+[root@master ~]# kubectl scale deploy pc-deployment --replicas=5  -n dev
+deployment.apps/pc-deployment scaled
+
+# 查看deployment
+[root@master ~]# kubectl get deploy pc-deployment -n dev
+NAME            READY   UP-TO-DATE   AVAILABLE   AGE
+pc-deployment   5/5     5            5           12m
+
+# 查看pod
+[root@master ~]# kubectl get pods -n dev
+NAME                             READY   STATUS    RESTARTS   AGE
+pc-deployment-5d89bdfbf9-67phk   1/1     Running   0          13s
+pc-deployment-5d89bdfbf9-f9zdt   1/1     Running   0          12m
+pc-deployment-5d89bdfbf9-lrt76   1/1     Running   0          13s
+pc-deployment-5d89bdfbf9-tvg6d   1/1     Running   0          12m
+pc-deployment-5d89bdfbf9-vgvg7   1/1     Running   0          12m
+
+# 方式二：
+# 编辑deployment的副本数量，修改spec:replicas: 4即可
+[root@master ~]# kubectl edit deploy pc-deployment -n dev
+deployment.apps/pc-deployment edited
+
+# Please edit the object below. Lines beginning with a '#' will be ignored,
+# and an empty file will abort the edit. If an error occurs while saving this file will be
+# reopened with the relevant failures.
+#
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+  creationTimestamp: "2024-05-30T10:04:53Z"
+  generation: 3
+  name: pc-deployment
+  namespace: dev
+  resourceVersion: "780219"
+  selfLink: /apis/apps/v1/namespaces/dev/deployments/pc-deployment
+  uid: d2886814-3ed9-4fd9-b6b9-7535803e60f7
+spec:
+  progressDeadlineSeconds: 600
+  # 修改这里即可
+  replicas: 4
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: nginx-pod
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - image: nginx:1.17.1
+        imagePullPolicy: IfNotPresent
+        name: nginx
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+"/tmp/kubectl-edit-w6mnw.yaml" 65L, 1849C
+
+# 查看pod
+[root@master ~]#  kubectl get pods -n dev
+NAME                             READY   STATUS    RESTARTS   AGE
+pc-deployment-5d89bdfbf9-f9zdt   1/1     Running   0          14m
+pc-deployment-5d89bdfbf9-lrt76   1/1     Running   0          2m9s
+pc-deployment-5d89bdfbf9-tvg6d   1/1     Running   0          14m
+pc-deployment-5d89bdfbf9-vgvg7   1/1     Running   0          14m
+```
+
 ### 版本回退
+
+>**deployment**支持两种更新策略:**重建更新**和**滚动更新(默认)**,可以通过**strategy**指定策略类型,支持两个属性:
+>
+>         strategy：指定新的Pod替换旧的Pod的策略， 支持两个属性：
+>           type：指定策略类型，支持两种策略
+>             Recreate：在创建出新的Pod之前会先杀掉所有已存在的Pod
+>             RollingUpdate：滚动更新，就是杀死一部分，就启动一部分，在更新过程中，存在两个版本Pod
+>           rollingUpdate：当type为RollingUpdate时生效，用于为RollingUpdate设置参数，支持两个属性：
+>             maxUnavailable：用来指定在升级过程中不可用Pod的最大数量，默认为25%。
+>             违规词汇： 用来指定在升级过程中可以超过期望的Pod的最大数量，默认为25%。
+>
+
+#### 重建更新
+
+#### 滚动更新
+
+
 
 ### 金丝雀发布
 
